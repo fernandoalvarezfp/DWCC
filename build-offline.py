@@ -22,7 +22,7 @@ TERM_RESET  = "\x1b[0m"
 
 SHOW_DIFF = False
 
-PATH_SRC            = os.path.dirname(__file__)
+PATH_SRC            = os.path.normpath(os.path.dirname(__file__))
 PATH_SITE           = os.path.join(PATH_SRC, "site")
 PATH_MKDOCS_ONLINE  = os.path.join(PATH_SRC, "mkdocs.yml")
 PATH_MKDOCS_OFFLINE = os.path.join(PATH_SRC, "mkdocs-offline.yml")
@@ -113,20 +113,19 @@ def pre_fetch(url, path):
 
   return get_3party_relative_path(path) + already_downloaded[url.group(1)]
 
-def inspect_dir(dir):
-  htmls = []
+def inspect_dir(htmls_accumulator, dir):
   ls = os.listdir(dir)
   for i in range(len(ls)):
     f = os.path.join(dir, ls[i])
     if os.path.isdir(f):
-      inspect_dir(f)
+      inspect_dir(htmls_accumulator, f)
     else:
       if re.match(".*\\.html$", f):
-        htmls.append(f)
+        htmls_accumulator.append(f)
 
-  return htmls
+  return htmls_accumulator
 
-htmls = inspect_dir(PATH_SITE)
+htmls = inspect_dir([], PATH_SITE)
 
 lines_changed = 0
 lines_removed = 0
@@ -145,7 +144,7 @@ for i_html in range(len(htmls)):
     if re.match("^[\\n\\r ]*$", line): # empty lines
       lines_removed += 1
 
-    if re.match(".* src=\"https?://", line): # external js
+    elif re.match(".* src=\"https?://", line): # external js
       line = re.sub(" src=\"(.*[^\"])\"", lambda s: " src=\"" + pre_fetch(s, htmls[i_html]) + "\"", line)
       output.append(line)
       if not changed:
